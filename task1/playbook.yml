@@ -1,0 +1,48 @@
+---
+- name: Configure and verify Nginx on CentOS 9 server locally
+  hosts: localhost
+  become: yes
+  
+  vars:
+    http_port: 80
+    https_port: 443
+
+  tasks:
+    - name: Install Nginx
+      yum:
+        name: nginx
+        state: latest
+
+    - name: Upload template nginx.conf
+      template:
+        src: templates/nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+      notify: restart nginx
+
+    - name: Start and enable Nginx
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Ensure Nginx is accessible on HTTP port
+      wait_for:
+        host: "0.0.0.0"
+        port: "{{ http_port }}"
+        timeout: 5
+      when: ansible_connection == "local"
+
+    - name: Ensure Nginx is accessible on HTTPS port
+      wait_for:
+        host: "0.0.0.0"
+        port: "{{ https_port }}"
+        timeout: 5
+      when: ansible_connection == "local"
+
+  handlers:
+    - name: restart nginx
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+
